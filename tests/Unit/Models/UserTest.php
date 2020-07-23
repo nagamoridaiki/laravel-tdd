@@ -2,7 +2,9 @@
 
 namespace Tests\Unit\Models;
 
+use App\Models\Lesson;
 use App\Models\User;
+use Mockery;
 use PHPUnit\Framework\TestCase;
 
 class UserTest extends TestCase
@@ -16,10 +18,16 @@ class UserTest extends TestCase
      */
     public function testCanReserve(string $plan, int $remainingCount, int $reservationCount, bool $canReserve)
     {
-        $user = new User();
+        /** @var User $user */
+        $user = Mockery::mock(User::class)->makePartial();
+        $user->shouldReceive('reservationCountThisMonth')->andReturn($reservationCount);
         $user->plan = $plan;
 
-        $this->assertSame($canReserve, $user->canReserve($remainingCount, $reservationCount));
+        /** @var Lesson $lesson */
+        $lesson = Mockery::mock(Lesson::class);
+        $lesson->shouldReceive('remainingCount')->andReturn($remainingCount);
+
+        $this->assertSame($canReserve, $user->canReserve($lesson));
     }
 
     public function dataCanReserve()
@@ -37,7 +45,24 @@ class UserTest extends TestCase
                 'reservationCount' => 5,
                 'canReserve' => false,
             ],
-            // 中略 残りのパターン
+            '予約不可:レギュラー,空きなし,月の上限以下' => [
+                'plan' => 'regular',
+                'remainingCount' => 0,
+                'reservationCount' => 4,
+                'canReserve' => false,
+            ],
+            '予約可:ゴールド,空きあり' => [
+                'plan' => 'gold',
+                'remainingCount' => 1,
+                'reservationCount' => 5,
+                'canReserve' => true,
+            ],
+            '予約不可:ゴールド,空きなし' => [
+                'plan' => 'gold',
+                'remainingCount' => 0,
+                'reservationCount' => 5,
+                'canReserve' => false,
+            ],
         ];
     }
 }
